@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MolecularWeight Pro | Chemical Analysis</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Roboto+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <main class="app-container">
+        <header>
+            <h1>MolecularWeight<span>Pro</span></h1>
+            <p>Precise molecular mass calculation & chemical lookup</p>
+            <p>Brought to you by MiMe vibecoding dept.</p>
+        </header>
+
+        <section class="search-section">
+            <div class="search-bar">
+                <input type="text" id="chemicalInput" placeholder="Enter formula (e.g., H2O) or name (e.g., Aspirin)"
+                    autocomplete="off">
+                <button id="calculateBtn">Calculate</button>
+            </div>
+            <div id="errorMessage" class="error-message hidden"></div>
+        </section>
+
+        <section id="resultsSection" class="results-section hidden">
+            <div class="result-card main-result">
+                <div class="result-label">Molecular Weight</div>
+                <div class="result-value"><span id="mwValue">0.0000</span> <span class="unit">g/mol</span></div>
+                <div class="chemical-info">
+                    <span id="formulaDisplay" class="formula"></span>
+                    <span id="nameDisplay" class="name"></span>
+                </div>
+                <div id="imageContainer" class="image-container hidden">
+                    <img id="chemicalImage" src="" alt="Chemical structure">
+                </div>
+                <div id="synonymsDisplay" class="synonyms hidden"></div>
+            </div>
+
+            <div class="details-grid">
+                <div class="result-card component-breakdown">
+                    <h3>Mass Composition</h3>
+                    <div id="compositionList" class="composition-list">
+                        <!-- Items will be injected here -->
+                    </div>
+                </div>
+
+                <div class="result-card element-table">
+                    <h3>Element Details</h3>
+                    <div class="table-wrapper">
+                        <table id="elementTable">
+                            <thead>
+                                <tr>
+                                    <th>Element</th>
+                                    <th>Count</th>
+                                    <th>Mass %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Rows will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="history-section">
+            <h3>Recent Calculations</h3>
+            <div id="historyList" class="history-list">
+                <!-- History items -->
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
