@@ -207,7 +207,6 @@ button:active {
 .result-value .unit {
     font-size: 1.5rem;
     color: var(--text-dim);
-    margin-left: 0.5rem;
 }
 
 .chemical-info {
@@ -245,6 +244,21 @@ button:active {
     max-width: 100%;
     line-height: 1.4;
     text-align: center;
+}
+
+.solubility-info {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text);
+    text-align: center;
+}
+
+.solubility-info strong {
+    color: var(--success);
 }
 
 .image-container {

@@ -26,6 +26,7 @@ const historyList = document.getElementById('historyList');
 const imageContainer = document.getElementById('imageContainer');
 const chemicalImage = document.getElementById('chemicalImage');
 const synonymsDisplay = document.getElementById('synonymsDisplay');
+const solubilityDisplay = document.getElementById('solubilityDisplay');
 
 let history = JSON.parse(localStorage.getItem('chemHistory') || '[]');
 
@@ -64,6 +65,14 @@ function showResult(data) {
         }
     } else {
         synonymsDisplay.classList.add('hidden');
+    }
+
+    // Render solubility if available
+    if (data.solubility) {
+        solubilityDisplay.innerHTML = `<strong>Solubility in water:</strong> ${data.solubility}`;
+        solubilityDisplay.classList.remove('hidden');
+    } else {
+        solubilityDisplay.classList.add('hidden');
     }
 
     updateHistory(formula, name, numMw);
@@ -250,6 +259,53 @@ async function lookupSynonyms(cid) {
     }
 }
 
+async function lookupSolubility(cid) {
+    try {
+        const response = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/${cid}/JSON?heading=Solubility`);
+        if (!response.ok) return null;
+        const data = await response.json();
+
+        // Recursively search for solubility string in deeply nested structure
+        function findSolubility(obj) {
+            if (!obj || typeof obj !== 'object') return null;
+
+            // Check if this object has StringWithMarkup
+            if (obj.StringWithMarkup && Array.isArray(obj.StringWithMarkup)) {
+                const str = obj.StringWithMarkup[0]?.String;
+                if (str) return str;
+            }
+
+            // Check Value.StringWithMarkup pattern
+            if (obj.Value?.StringWithMarkup?.[0]?.String) {
+                return obj.Value.StringWithMarkup[0].String;
+            }
+
+            // Recurse into arrays
+            if (Array.isArray(obj)) {
+                for (const item of obj) {
+                    const result = findSolubility(item);
+                    if (result) return result;
+                }
+            }
+
+            // Recurse into object properties
+            for (const key of Object.keys(obj)) {
+                if (key === 'Section' || key === 'Information') {
+                    const result = findSolubility(obj[key]);
+                    if (result) return result;
+                }
+            }
+
+            return null;
+        }
+
+        return findSolubility(data.Record);
+    } catch (e) {
+        console.error('Solubility lookup error:', e);
+        return null;
+    }
+}
+
 async function handleCalculate() {
     const query = input.value.trim();
     if (!query) return;
@@ -275,11 +331,12 @@ async function handleCalculate() {
         // Try API lookup
         const apiData = await lookupPubChem(query);
         if (apiData) {
-            const [composition, synonyms] = await Promise.all([
+            const [composition, synonyms, solubility] = await Promise.all([
                 parseFormula(apiData.formula),
-                lookupSynonyms(apiData.cid)
+                lookupSynonyms(apiData.cid),
+                lookupSolubility(apiData.cid)
             ]);
-            showResult({ ...apiData, composition, synonyms });
+            showResult({ ...apiData, composition, synonyms, solubility });
         } else {
             showError("Could not find chemical or parse formula.");
         }
