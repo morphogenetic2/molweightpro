@@ -261,6 +261,23 @@ button:active {
     color: var(--success);
 }
 
+.state-info {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    text-align: center;
+}
+
+.chem-state-badge {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-dim);
+    display: inline-block;
+    margin-top: 0.2rem;
+}
+
 .image-container {
     margin-top: 2rem;
     display: flex;
@@ -375,6 +392,136 @@ th {
 td {
     padding: 1rem 0;
     border-bottom: 1px solid var(--border);
+}
+
+/* View Switcher */
+.view-switcher {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.view-switcher button {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    padding: 0.75rem 1.5rem;
+    color: var(--text-dim);
+    transition: all 0.3s ease;
+}
+
+.view-switcher button.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+}
+
+.secondary-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Buffer View Styles */
+.buffer-settings .buffer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.volume-input-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.volume-input-group input {
+    width: 100px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    text-align: center;
+    color: var(--text);
+}
+
+.volume-input-group select,
+.solute-row select {
+    background: var(--bg-dark);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    outline: none;
+}
+
+.solutes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.solute-table th {
+    font-size: 0.75rem;
+}
+
+.solute-row td {
+    padding: 0.75rem 0.25rem;
+}
+
+.solute-row input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.9rem;
+    color: var(--text);
+}
+
+.solute-row .mw-input {
+    width: 80px;
+    font-family: 'Roboto Mono', monospace;
+    color: var(--primary);
+}
+
+.solute-row .conc-group {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.solute-row .conc-input {
+    width: 70px;
+}
+
+.solute-row .result-cell {
+    font-weight: 600;
+    color: var(--success);
+    font-family: 'Roboto Mono', monospace;
+    min-width: 100px;
+}
+
+.remove-btn {
+    background: transparent !important;
+    color: var(--text-dim);
+    border: none;
+    padding: 0.5rem !important;
+    font-size: 1.2rem;
+    opacity: 0;
+    transition: all 0.2s;
+}
+
+.solute-row:hover .remove-btn {
+    opacity: 1;
+    color: var(--error);
 }
 
 /* History */

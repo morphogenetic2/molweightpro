@@ -27,62 +27,109 @@
             <p>Brought to you by MiMe vibecoding dept.</p>
         </header>
 
-        <section class="search-section">
-            <div class="search-bar">
-                <input type="text" id="chemicalInput" placeholder="Enter formula (e.g., H2O) or name (e.g., Aspirin)"
-                    autocomplete="off">
-                <button id="calculateBtn">Calculate</button>
-            </div>
-            <div id="errorMessage" class="error-message hidden"></div>
-        </section>
+        <nav class="view-switcher">
+            <button id="showMwView" class="active">MW Calculator</button>
+            <button id="showBufferView">Buffer Calculator</button>
+        </nav>
 
-        <section id="resultsSection" class="results-section hidden">
-            <div class="result-card main-result">
-                <div class="result-label">Molecular Weight</div>
-                <div class="result-value"><span id="mwValue">0.00</span><span class="unit">g/mol</span></div>
-                <div class="chemical-info">
-                    <span id="formulaDisplay" class="formula"></span>
-                    <span id="nameDisplay" class="name"></span>
+        <section id="mwView" class="view-container">
+            <section class="search-section">
+                <div class="search-bar">
+                    <input type="text" id="chemicalInput"
+                        placeholder="Enter formula (e.g., H2O) or name (e.g., Aspirin)" autocomplete="off">
+                    <button id="calculateBtn">Calculate</button>
                 </div>
-                <div id="solubilityDisplay" class="solubility-info hidden"></div>
-                <div id="imageContainer" class="image-container hidden">
-                    <img id="chemicalImage" src="" alt="Chemical structure">
-                </div>
-                <div id="synonymsDisplay" class="synonyms hidden"></div>
-            </div>
+                <div id="errorMessage" class="error-message hidden"></div>
+            </section>
 
-            <div class="details-grid">
-                <div class="result-card component-breakdown">
-                    <h3>Mass Composition</h3>
-                    <div id="compositionList" class="composition-list">
-                        <!-- Items will be injected here -->
+            <section id="resultsSection" class="results-section hidden">
+                <div class="result-card main-result">
+                    <div class="result-label">Molecular Weight</div>
+                    <div class="result-value"><span id="mwValue">0.00</span><span class="unit">g/mol</span></div>
+                    <div class="chemical-info">
+                        <span id="formulaDisplay" class="formula"></span>
+                        <span id="nameDisplay" class="name"></span>
+                    </div>
+                    <div id="solubilityDisplay" class="solubility-info hidden"></div>
+                    <div id="stateDisplay" class="state-info hidden"></div>
+                    <div id="imageContainer" class="image-container hidden">
+                        <img id="chemicalImage" src="" alt="Chemical structure">
+                    </div>
+                    <div id="synonymsDisplay" class="synonyms hidden"></div>
+                </div>
+
+                <div class="details-grid">
+                    <div class="result-card component-breakdown">
+                        <h3>Mass Composition</h3>
+                        <div id="compositionList" class="composition-list">
+                            <!-- Items will be injected here -->
+                        </div>
+                    </div>
+
+                    <div class="result-card element-table">
+                        <h3>Element Details</h3>
+                        <div class="table-wrapper">
+                            <table id="elementTable">
+                                <thead>
+                                    <tr>
+                                        <th>Element</th>
+                                        <th>Count</th>
+                                        <th>Mass %</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Rows will be injected here -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
+            </section>
 
-                <div class="result-card element-table">
-                    <h3>Element Details</h3>
-                    <div class="table-wrapper">
-                        <table id="elementTable">
-                            <thead>
-                                <tr>
-                                    <th>Element</th>
-                                    <th>Count</th>
-                                    <th>Mass %</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Rows will be injected here -->
-                            </tbody>
-                        </table>
+            <section class="history-section">
+                <h3>Recent Calculations</h3>
+                <div id="historyList" class="history-list">
+                    <!-- History items -->
+                </div>
+            </section>
+        </section>
+
+        <section id="bufferView" class="view-container hidden">
+            <div class="result-card buffer-settings">
+                <div class="buffer-header">
+                    <h3>Final Solution Volume</h3>
+                    <div class="volume-input-group">
+                        <input type="number" id="solutionVolume" value="100" min="0">
+                        <select id="volumeUnit">
+                            <option value="uL">uL</option>
+                            <option value="mL" selected>mL</option>
+                            <option value="L">L</option>
+                        </select>
                     </div>
                 </div>
             </div>
-        </section>
 
-        <section class="history-section">
-            <h3>Recent Calculations</h3>
-            <div id="historyList" class="history-list">
-                <!-- History items -->
+            <div class="result-card solute-card">
+                <div class="solutes-header">
+                    <h3>Solutes</h3>
+                    <button id="addSoluteBtn" class="secondary-btn">+ Add Solute</button>
+                </div>
+                <div class="table-wrapper">
+                    <table class="solute-table">
+                        <thead>
+                            <tr>
+                                <th>Chemical</th>
+                                <th>MW</th>
+                                <th>Concentration</th>
+                                <th>Required Amount</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="soluteContainer">
+                            <!-- Solute rows will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </section>
     </main>

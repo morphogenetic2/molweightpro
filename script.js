@@ -13,6 +13,13 @@ const PTABLE = {
     "Lv": 293, "Ts": 294, "Og": 294
 };
 
+// DOM Elements - View Switching
+const mwView = document.getElementById('mwView');
+const bufferView = document.getElementById('bufferView');
+const showMwBtn = document.getElementById('showMwView');
+const showBufferBtn = document.getElementById('showBufferView');
+
+// DOM Elements - MW Calc
 const input = document.getElementById('chemicalInput');
 const calculateBtn = document.getElementById('calculateBtn');
 const resultsSection = document.getElementById('resultsSection');
@@ -27,9 +34,40 @@ const imageContainer = document.getElementById('imageContainer');
 const chemicalImage = document.getElementById('chemicalImage');
 const synonymsDisplay = document.getElementById('synonymsDisplay');
 const solubilityDisplay = document.getElementById('solubilityDisplay');
+const stateDisplay = document.getElementById('stateDisplay');
+
+// DOM Elements - Buffer Calc
+const solutionVolumeInput = document.getElementById('solutionVolume');
+const volumeUnitSelect = document.getElementById('volumeUnit');
+const soluteContainer = document.getElementById('soluteContainer');
+const addSoluteBtn = document.getElementById('addSoluteBtn');
 
 let history = JSON.parse(localStorage.getItem('chemHistory') || '[]');
 
+/**
+ * VIEW SWITCHING
+ */
+function switchView(view) {
+    if (view === 'mw') {
+        mwView.classList.remove('hidden');
+        bufferView.classList.add('hidden');
+        showMwBtn.classList.add('active');
+        showBufferBtn.classList.remove('active');
+    } else {
+        mwView.classList.add('hidden');
+        bufferView.classList.remove('hidden');
+        showMwBtn.classList.remove('active');
+        showBufferBtn.classList.add('active');
+        if (soluteContainer.children.length === 0) addSoluteRow();
+    }
+}
+
+showMwBtn.addEventListener('click', () => switchView('mw'));
+showBufferBtn.addEventListener('click', () => switchView('buffer'));
+
+/**
+ * MW CALCULATOR LOGIC
+ */
 function showResult(data) {
     const { mw, formula, name, composition, cid, synonyms } = data;
     const numMw = Number(mw);
@@ -51,7 +89,6 @@ function showResult(data) {
         imageContainer.classList.add('hidden');
     }
 
-    // Render synonyms below image
     if (synonyms && synonyms.length > 0) {
         const topSynonyms = synonyms
             .filter(s => s.toLowerCase() !== (name || '').toLowerCase())
@@ -67,12 +104,18 @@ function showResult(data) {
         synonymsDisplay.classList.add('hidden');
     }
 
-    // Render solubility if available
     if (data.solubility) {
         solubilityDisplay.innerHTML = `<strong>Solubility in water:</strong> ${data.solubility}`;
         solubilityDisplay.classList.remove('hidden');
     } else {
         solubilityDisplay.classList.add('hidden');
+    }
+
+    if (data.state) {
+        stateDisplay.textContent = `Physical State: ${data.state}`;
+        stateDisplay.classList.remove('hidden');
+    } else {
+        stateDisplay.classList.add('hidden');
     }
 
     updateHistory(formula, name, numMw);
@@ -143,6 +186,7 @@ function renderHistory() {
         div.textContent = item.key;
         div.onclick = () => {
             input.value = item.key;
+            switchView('mw');
             handleCalculate();
         };
         historyList.appendChild(div);
@@ -150,207 +194,310 @@ function renderHistory() {
 }
 
 /**
- * Formula Parser
- * Handles nested groups like (NH4)2SO4 and hydrates like CaCl2.2H2O
+ * BUFFER CALCULATOR LOGIC
+ */
+function addSoluteRow() {
+    const row = document.createElement('tr');
+    row.className = 'solute-row';
+    row.innerHTML = `
+        <td>
+            <input type="text" class="chem-name" placeholder="Name/Formula">
+            <div class="state-badge-container"></div>
+        </td>
+        <td><input type="number" class="mw-input" step="0.01" placeholder="Mw"></td>
+        <td>
+            <div class="conc-group">
+                <input type="number" class="conc-input" value="1" step="0.1">
+                <select class="conc-unit">
+                    <option value="M">M</option>
+                    <option value="mM">mM</option>
+                    <option value="uM">uM</option>
+                    <option value="pct">% (w/v)</option>
+                    <option value="dil">Dilution (X)</option>
+                </select>
+            </div>
+        </td>
+        <td class="result-cell">-</td>
+        <td><button class="remove-btn">×</button></td>
+    `;
+
+    const nameInput = row.querySelector('.chem-name');
+    const mwInput = row.querySelector('.mw-input');
+    const concInput = row.querySelector('.conc-input');
+    const unitSelect = row.querySelector('.conc-unit');
+    const resultCell = row.querySelector('.result-cell');
+    const removeBtn = row.querySelector('.remove-btn');
+
+    // Auto-lookup MW when name changes or MW is clicked
+    const triggerLookup = async () => {
+        const query = nameInput.value.trim();
+        if (!query) return;
+
+        // Visual feedback
+        mwInput.placeholder = "...";
+
+        // Try local parse
+        if (/^[A-Za-z0-9()\[\]·.]+$/.test(query) && /[A-Z]/.test(query)) {
+            try {
+                const comp = parseFormula(query);
+                mwInput.value = calculateMw(comp).toFixed(2);
+                calculateRow(row);
+                mwInput.placeholder = "Mw";
+                return;
+            } catch (e) { }
+        }
+
+        // Try PubChem
+        const res = await lookupPubChem(query);
+        if (res) {
+            mwInput.value = Number(res.mw).toFixed(2);
+            calculateRow(row);
+
+            // Fetch state as well
+            const state = await lookupState(res.cid);
+            if (state) {
+                row.dataset.state = state; // Store for calculation
+                const badgeContainer = row.querySelector('.state-badge-container');
+                badgeContainer.innerHTML = `<span class="chem-state-badge">${state}</span>`;
+
+                // Update % option label if it's a liquid
+                const pctOption = row.querySelector('.conc-unit option[value="pct"]');
+                if (state === 'Liquid') {
+                    pctOption.textContent = '% (v/v)';
+                } else {
+                    pctOption.textContent = '% (w/v)';
+                }
+                calculateRow(row);
+            }
+        }
+        mwInput.placeholder = "Mw";
+    };
+
+    let debounce;
+    nameInput.oninput = () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(triggerLookup, 500);
+    };
+
+    // User specifically asked to trigger lookup when clicking/focusing the MW input
+    mwInput.onfocus = triggerLookup;
+
+    [mwInput, concInput, unitSelect].forEach(el => {
+        el.oninput = () => calculateRow(row);
+    });
+
+    removeBtn.onclick = () => {
+        row.remove();
+    };
+
+    soluteContainer.appendChild(row);
+}
+
+function calculateRow(row) {
+    const mw = parseFloat(row.querySelector('.mw-input').value);
+    const conc = parseFloat(row.querySelector('.conc-input').value);
+    const unit = row.querySelector('.conc-unit').value;
+    const resultCell = row.querySelector('.result-cell');
+
+    const vol = parseFloat(solutionVolumeInput.value);
+    const volUnit = volumeUnitSelect.value;
+
+    if (isNaN(mw) && unit !== 'pct' && unit !== 'dil') {
+        resultCell.textContent = '-';
+        return;
+    }
+    if (isNaN(conc) || isNaN(vol)) {
+        resultCell.textContent = '-';
+        return;
+    }
+
+    // Convert volume to Liters for calculation
+    let volL = vol;
+    if (volUnit === 'mL') volL = vol / 1000;
+    if (volUnit === 'uL') volL = vol / 1000000;
+
+    let resultMsg = "";
+
+    if (unit === 'M' || unit === 'mM' || unit === 'uM') {
+        let molarity = conc;
+        if (unit === 'mM') molarity = conc / 1000;
+        if (unit === 'uM') molarity = conc / 1000000;
+
+        const grams = molarity * volL * mw;
+        if (grams < 0.001) resultMsg = (grams * 1000000).toFixed(1) + " ug";
+        else if (grams < 1) resultMsg = (grams * 1000).toFixed(1) + " mg";
+        else resultMsg = grams.toFixed(3) + " g";
+    }
+    else if (unit === 'pct') {
+        const volML = volL * 1000;
+        const amount = (conc / 100) * volML;
+
+        if (row.dataset.state === 'Liquid') {
+            // % v/v -> result in mL/uL
+            if (amount < 1) resultMsg = (amount * 1000).toFixed(1) + " uL";
+            else resultMsg = amount.toFixed(2) + " mL";
+        } else {
+            // % w/v -> result in g/mg
+            if (amount < 1) resultMsg = (amount * 1000).toFixed(1) + " mg";
+            else resultMsg = amount.toFixed(2) + " g";
+        }
+    }
+    else if (unit === 'dil') {
+        // Dilution X (making it 1X). Vol = FinalVol / StockConc
+        const stockVolL = volL / conc;
+        const stockVolML = stockVolL * 1000;
+        if (stockVolML < 1) resultMsg = (stockVolML * 1000).toFixed(1) + " uL";
+        else resultMsg = stockVolML.toFixed(2) + " mL";
+    }
+
+    resultCell.textContent = resultMsg;
+}
+
+addSoluteBtn.onclick = addSoluteRow;
+solutionVolumeInput.oninput = () => document.querySelectorAll('.solute-row').forEach(calculateRow);
+volumeUnitSelect.onchange = () => document.querySelectorAll('.solute-row').forEach(calculateRow);
+
+/**
+ * SHARED UTILITIES
  */
 function parseFormula(formula) {
-    // Normalize and split by hydrate dots
     const parts = formula.replace(/·/g, '.').split('.');
     let totalComp = {};
-
     parts.forEach(part => {
-        // Handle leading multiplier (e.g., 2H2O)
         let multiplier = 1;
         const multMatch = part.match(/^(\d+)(.*)$/);
         let formulaPart = part;
-
         if (multMatch && multMatch[2].length > 0 && !/^\d+$/.test(multMatch[2])) {
             multiplier = parseInt(multMatch[1]);
             formulaPart = multMatch[2];
         }
-
         const tokens = formulaPart.match(/([A-Z][a-z]?|\d+|\(|\)|\[|\])/g);
-        if (!tokens) return;
-
-        // Check if the tokens actually reconstruct the original formulaPart exactly
-        // This prevents strings like "Aspirin" being parsed as "As"
-        if (tokens.join('') !== formulaPart) {
-            throw new Error(`Invalid formula: ${formulaPart}`);
-        }
-
+        if (!tokens || tokens.join('') !== formulaPart) throw new Error(`Invalid formula: ${formulaPart}`);
         let stack = [{}];
         for (let i = 0; i < tokens.length; i++) {
             let t = tokens[i];
-            if (t === '(' || t === '[') {
-                stack.push({});
-            } else if (t === ')' || t === ']') {
+            if (t === '(' || t === '[') stack.push({});
+            else if (t === ')' || t === ']') {
                 let top = stack.pop();
                 let next = tokens[i + 1];
                 let groupMult = 1;
-                if (next && /^\d+$/.test(next)) {
-                    groupMult = parseInt(next);
-                    i++;
-                }
+                if (next && /^\d+$/.test(next)) { groupMult = parseInt(next); i++; }
                 let current = stack[stack.length - 1];
-                for (let atom in top) {
-                    current[atom] = (current[atom] || 0) + top[atom] * groupMult;
-                }
+                for (let atom in top) current[atom] = (current[atom] || 0) + top[atom] * groupMult;
             } else if (/^[A-Z][a-z]?$/.test(t)) {
                 if (!PTABLE[t]) throw new Error(`Unknown element: ${t}`);
                 let next = tokens[i + 1];
                 let count = 1;
-                if (next && /^\d+$/.test(next)) {
-                    count = parseInt(next);
-                    i++;
-                }
+                if (next && /^\d+$/.test(next)) { count = parseInt(next); i++; }
                 let current = stack[stack.length - 1];
                 current[t] = (current[t] || 0) + count;
-            } else {
-                throw new Error(`Unexpected token: ${t}`);
             }
         }
-
         if (stack.length !== 1) throw new Error("Unbalanced parentheses/brackets");
-
-        // Merge this part's composition into total
-        const partComp = stack[0];
-        for (let atom in partComp) {
-            totalComp[atom] = (totalComp[atom] || 0) + partComp[atom] * multiplier;
-        }
+        for (let atom in stack[0]) totalComp[atom] = (totalComp[atom] || 0) + stack[0][atom] * multiplier;
     });
-
-    if (Object.keys(totalComp).length === 0) throw new Error("Invalid formula format");
     return totalComp;
 }
 
 function calculateMw(composition) {
-    return Object.entries(composition).reduce((sum, [symbol, count]) => {
-        return sum + (PTABLE[symbol] * count);
-    }, 0);
+    return Object.entries(composition).reduce((sum, [symbol, count]) => sum + (PTABLE[symbol] * count), 0);
 }
 
 async function lookupPubChem(query) {
     try {
-        const nameResponse = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(query)}/property/MolecularFormula,MolecularWeight/JSON`);
-        if (!nameResponse.ok) return null;
-
-        const data = await nameResponse.json();
+        const response = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(query)}/property/MolecularFormula,MolecularWeight/JSON`);
+        if (!response.ok) return null;
+        const data = await response.json();
         const prop = data.PropertyTable.Properties[0];
-
         return {
             formula: prop.MolecularFormula,
             mw: prop.MolecularWeight,
-            name: query,
             cid: prop.CID
         };
-    } catch (e) {
-        return null;
-    }
+    } catch (e) { return null; }
 }
 
 async function lookupSynonyms(cid) {
     try {
-        const response = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/synonyms/JSON`);
-        if (!response.ok) return [];
-        const data = await response.json();
+        const res = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/synonyms/JSON`);
+        const data = await res.json();
         return data.InformationList.Information[0].Synonym || [];
-    } catch (e) {
-        return [];
-    }
+    } catch (e) { return []; }
 }
 
 async function lookupSolubility(cid) {
     try {
-        const response = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/${cid}/JSON?heading=Solubility`);
-        if (!response.ok) return null;
-        const data = await response.json();
-
-        // Recursively search for solubility string in deeply nested structure
-        function findSolubility(obj) {
+        const res = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/${cid}/JSON?heading=Solubility`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        function find(obj) {
             if (!obj || typeof obj !== 'object') return null;
-
-            // Check if this object has StringWithMarkup
-            if (obj.StringWithMarkup && Array.isArray(obj.StringWithMarkup)) {
-                const str = obj.StringWithMarkup[0]?.String;
-                if (str) return str;
-            }
-
-            // Check Value.StringWithMarkup pattern
-            if (obj.Value?.StringWithMarkup?.[0]?.String) {
-                return obj.Value.StringWithMarkup[0].String;
-            }
-
-            // Recurse into arrays
-            if (Array.isArray(obj)) {
-                for (const item of obj) {
-                    const result = findSolubility(item);
-                    if (result) return result;
-                }
-            }
-
-            // Recurse into object properties
-            for (const key of Object.keys(obj)) {
-                if (key === 'Section' || key === 'Information') {
-                    const result = findSolubility(obj[key]);
-                    if (result) return result;
-                }
-            }
-
+            if (obj.StringWithMarkup?.[0]?.String) return obj.StringWithMarkup[0].String;
+            if (obj.Value?.StringWithMarkup?.[0]?.String) return obj.Value.StringWithMarkup[0].String;
+            if (Array.isArray(obj)) { for (let x of obj) { const r = find(x); if (r) return r; } }
+            for (let k in obj) { if (k === 'Section' || k === 'Information') { const r = find(obj[k]); if (r) return r; } }
             return null;
         }
+        return find(data.Record);
+    } catch (e) { return null; }
+}
 
-        return findSolubility(data.Record);
-    } catch (e) {
-        console.error('Solubility lookup error:', e);
-        return null;
-    }
+async function lookupState(cid) {
+    try {
+        const res = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/${cid}/JSON?heading=Physical+Description`);
+        if (!res.ok) return null;
+        const data = await res.json();
+
+        function find(obj) {
+            if (!obj || typeof obj !== 'object') return null;
+            const str = obj.StringWithMarkup?.[0]?.String || obj.Value?.StringWithMarkup?.[0]?.String;
+            if (str) {
+                const s = str.toLowerCase();
+                if (s.includes('liquid') || s.includes('oil')) return 'Liquid';
+                if (s.includes('solid') || s.includes('crystal') || s.includes('powder') || s.includes('flakes')) return 'Solid';
+                if (s.includes('gas')) return 'Gas';
+                return str.length > 20 ? str.substring(0, 20) + "..." : str;
+            }
+            if (Array.isArray(obj)) { for (let x of obj) { const r = find(x); if (r) return r; } }
+            for (let k in obj) { if (k === 'Section' || k === 'Information') { const r = find(obj[k]); if (r) return r; } }
+            return null;
+        }
+        return find(data.Record);
+    } catch (e) { return null; }
 }
 
 async function handleCalculate() {
     const query = input.value.trim();
     if (!query) return;
-
     calculateBtn.disabled = true;
     calculateBtn.textContent = '...';
 
     try {
-        // Try local parsing first (if it looks like a formula)
         if (/^[A-Za-z0-9()\[\]·.]+$/.test(query) && /[A-Z]/.test(query)) {
             try {
                 const composition = parseFormula(query);
                 const mw = calculateMw(composition);
                 showResult({ mw, formula: query, composition });
                 return;
-            } catch (e) {
-                // If local parsing fails (e.g. from strict token check),
-                // it might be a name like "Aspirin". Fall through to API.
-                console.log("Local parse failed, attempting API lookup:", e.message);
-            }
+            } catch (e) { }
         }
-
-        // Try API lookup
         const apiData = await lookupPubChem(query);
         if (apiData) {
-            const [composition, synonyms, solubility] = await Promise.all([
+            const [comp, syns, solol, state] = await Promise.all([
                 parseFormula(apiData.formula),
                 lookupSynonyms(apiData.cid),
-                lookupSolubility(apiData.cid)
+                lookupSolubility(apiData.cid),
+                lookupState(apiData.cid)
             ]);
-            showResult({ ...apiData, composition, synonyms, solubility });
-        } else {
-            showError("Could not find chemical or parse formula.");
-        }
-    } catch (e) {
-        showError(e.message);
-    } finally {
+            showResult({ ...apiData, composition: comp, synonyms: syns, solubility: solol, state });
+        } else showError("Could not find chemical.");
+    } catch (e) { showError(e.message); }
+    finally {
         calculateBtn.disabled = false;
         calculateBtn.textContent = 'Calculate';
     }
 }
 
 calculateBtn.addEventListener('click', handleCalculate);
-input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') handleCalculate();
-});
-
+input.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleCalculate(); });
 renderHistory();
