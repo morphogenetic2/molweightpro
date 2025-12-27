@@ -141,6 +141,23 @@ input {
     font-size: 1.1rem;
 }
 
+/* Hide spin buttons for Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Hide spin buttons for Firefox */
+input[type=number] {
+    -moz-appearance: textfield;
+}
+
+/* Optional: Show them on hover if desired, but usually 
+   consistent clean look is preferred. To match Chrome's 
+   hover behavior exactly is tricky in Firefox, so we 
+   usually hide them for a cleaner "Pro" look. */
+
 button {
     background: var(--primary);
     color: white;
@@ -259,23 +276,6 @@ button:active {
 
 .solubility-info strong {
     color: var(--success);
-}
-
-.state-info {
-    margin-top: 0.5rem;
-    font-size: 0.85rem;
-    color: var(--text-dim);
-    text-align: center;
-}
-
-.chem-state-badge {
-    font-size: 0.7rem;
-    padding: 0.1rem 0.4rem;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-dim);
-    display: inline-block;
-    margin-top: 0.2rem;
 }
 
 .image-container {

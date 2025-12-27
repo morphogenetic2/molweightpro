@@ -34,7 +34,6 @@ const imageContainer = document.getElementById('imageContainer');
 const chemicalImage = document.getElementById('chemicalImage');
 const synonymsDisplay = document.getElementById('synonymsDisplay');
 const solubilityDisplay = document.getElementById('solubilityDisplay');
-const stateDisplay = document.getElementById('stateDisplay');
 
 // DOM Elements - Buffer Calc
 const solutionVolumeInput = document.getElementById('solutionVolume');
@@ -109,13 +108,6 @@ function showResult(data) {
         solubilityDisplay.classList.remove('hidden');
     } else {
         solubilityDisplay.classList.add('hidden');
-    }
-
-    if (data.state) {
-        stateDisplay.textContent = `Physical State: ${data.state}`;
-        stateDisplay.classList.remove('hidden');
-    } else {
-        stateDisplay.classList.add('hidden');
     }
 
     updateHistory(formula, name, numMw);
@@ -200,10 +192,7 @@ function addSoluteRow() {
     const row = document.createElement('tr');
     row.className = 'solute-row';
     row.innerHTML = `
-        <td>
-            <input type="text" class="chem-name" placeholder="Name/Formula">
-            <div class="state-badge-container"></div>
-        </td>
+        <td><input type="text" class="chem-name" placeholder="Name/Formula"></td>
         <td><input type="number" class="mw-input" step="0.01" placeholder="Mw"></td>
         <td>
             <div class="conc-group">
@@ -252,23 +241,6 @@ function addSoluteRow() {
         if (res) {
             mwInput.value = Number(res.mw).toFixed(2);
             calculateRow(row);
-
-            // Fetch state as well
-            const state = await lookupState(res.cid);
-            if (state) {
-                row.dataset.state = state; // Store for calculation
-                const badgeContainer = row.querySelector('.state-badge-container');
-                badgeContainer.innerHTML = `<span class="chem-state-badge">${state}</span>`;
-
-                // Update % option label if it's a liquid
-                const pctOption = row.querySelector('.conc-unit option[value="pct"]');
-                if (state === 'Liquid') {
-                    pctOption.textContent = '% (v/v)';
-                } else {
-                    pctOption.textContent = '% (w/v)';
-                }
-                calculateRow(row);
-            }
         }
         mwInput.placeholder = "Mw";
     };
@@ -329,18 +301,11 @@ function calculateRow(row) {
         else resultMsg = grams.toFixed(3) + " g";
     }
     else if (unit === 'pct') {
+        // % w/v is grams per 100mL
         const volML = volL * 1000;
-        const amount = (conc / 100) * volML;
-
-        if (row.dataset.state === 'Liquid') {
-            // % v/v -> result in mL/uL
-            if (amount < 1) resultMsg = (amount * 1000).toFixed(1) + " uL";
-            else resultMsg = amount.toFixed(2) + " mL";
-        } else {
-            // % w/v -> result in g/mg
-            if (amount < 1) resultMsg = (amount * 1000).toFixed(1) + " mg";
-            else resultMsg = amount.toFixed(2) + " g";
-        }
+        const grams = (conc / 100) * volML;
+        if (grams < 1) resultMsg = (grams * 1000).toFixed(1) + " mg";
+        else resultMsg = grams.toFixed(2) + " g";
     }
     else if (unit === 'dil') {
         // Dilution X (making it 1X). Vol = FinalVol / StockConc
@@ -442,29 +407,7 @@ async function lookupSolubility(cid) {
     } catch (e) { return null; }
 }
 
-async function lookupState(cid) {
-    try {
-        const res = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/${cid}/JSON?heading=Physical+Description`);
-        if (!res.ok) return null;
-        const data = await res.json();
 
-        function find(obj) {
-            if (!obj || typeof obj !== 'object') return null;
-            const str = obj.StringWithMarkup?.[0]?.String || obj.Value?.StringWithMarkup?.[0]?.String;
-            if (str) {
-                const s = str.toLowerCase();
-                if (s.includes('liquid') || s.includes('oil')) return 'Liquid';
-                if (s.includes('solid') || s.includes('crystal') || s.includes('powder') || s.includes('flakes')) return 'Solid';
-                if (s.includes('gas')) return 'Gas';
-                return str.length > 20 ? str.substring(0, 20) + "..." : str;
-            }
-            if (Array.isArray(obj)) { for (let x of obj) { const r = find(x); if (r) return r; } }
-            for (let k in obj) { if (k === 'Section' || k === 'Information') { const r = find(obj[k]); if (r) return r; } }
-            return null;
-        }
-        return find(data.Record);
-    } catch (e) { return null; }
-}
 
 async function handleCalculate() {
     const query = input.value.trim();
@@ -483,13 +426,12 @@ async function handleCalculate() {
         }
         const apiData = await lookupPubChem(query);
         if (apiData) {
-            const [comp, syns, solol, state] = await Promise.all([
+            const [comp, syns, solol] = await Promise.all([
                 parseFormula(apiData.formula),
                 lookupSynonyms(apiData.cid),
-                lookupSolubility(apiData.cid),
-                lookupState(apiData.cid)
+                lookupSolubility(apiData.cid)
             ]);
-            showResult({ ...apiData, composition: comp, synonyms: syns, solubility: solol, state });
+            showResult({ ...apiData, composition: comp, synonyms: syns, solubility: solol });
         } else showError("Could not find chemical.");
     } catch (e) { showError(e.message); }
     finally {
