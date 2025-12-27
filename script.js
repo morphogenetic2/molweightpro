@@ -192,7 +192,13 @@ function addSoluteRow() {
     const row = document.createElement('tr');
     row.className = 'solute-row';
     row.innerHTML = `
-        <td><input type="text" class="chem-name" placeholder="Name/Formula"></td>
+        <td>
+            <div class="chem-input-group">
+                <button class="lookup-btn" title="Open PubChem Entry">🔍</button>
+                <input type="text" class="chem-name" placeholder="Name/Formula">
+            </div>
+        </td>
+        <td class="formula-cell"></td>
         <td><input type="number" class="mw-input" step="0.01" placeholder="Mw"></td>
         <td>
             <div class="conc-group">
@@ -211,16 +217,21 @@ function addSoluteRow() {
     `;
 
     const nameInput = row.querySelector('.chem-name');
+    const formulaCell = row.querySelector('.formula-cell');
     const mwInput = row.querySelector('.mw-input');
     const concInput = row.querySelector('.conc-input');
     const unitSelect = row.querySelector('.conc-unit');
     const resultCell = row.querySelector('.result-cell');
     const removeBtn = row.querySelector('.remove-btn');
+    const lookupBtn = row.querySelector('.lookup-btn');
 
     // Auto-lookup MW when name changes or MW is clicked
     const triggerLookup = async () => {
         const query = nameInput.value.trim();
-        if (!query) return;
+        if (!query) {
+            formulaCell.innerHTML = '';
+            return;
+        }
 
         // Visual feedback
         mwInput.placeholder = "...";
@@ -228,10 +239,11 @@ function addSoluteRow() {
         // Try local parse
         if (/^[A-Za-z0-9()\[\]·.]+$/.test(query) && /[A-Z]/.test(query)) {
             try {
-                const comp = parseFormula(query);
-                mwInput.value = calculateMw(comp).toFixed(2);
+                const composition = parseFormula(query);
+                mwInput.value = calculateMw(composition).toFixed(2);
                 calculateRow(row);
                 mwInput.placeholder = "Mw";
+                formulaCell.innerHTML = '';
                 return;
             } catch (e) { }
         }
@@ -240,15 +252,44 @@ function addSoluteRow() {
         const res = await lookupPubChem(query);
         if (res) {
             mwInput.value = Number(res.mw).toFixed(2);
+            row.dataset.cid = res.cid; // Store for the magnifying glass button
+
+            // Show formula badge if it's a name search
+            if (res.formula && res.formula !== query) {
+                formulaCell.innerHTML = `<span class="formula-badge">${formatFormula(res.formula)}</span>`;
+            } else {
+                formulaCell.innerHTML = '';
+            }
+
             calculateRow(row);
+        } else {
+            formulaCell.innerHTML = '';
         }
         mwInput.placeholder = "Mw";
     };
 
+    lookupBtn.onclick = () => {
+        const query = nameInput.value.trim();
+        if (!query) return;
+
+        const url = row.dataset.cid
+            ? `https://pubchem.ncbi.nlm.nih.gov/compound/${row.dataset.cid}`
+            : `https://pubchem.ncbi.nlm.nih.gov/#query=${encodeURIComponent(query)}`;
+        window.open(url, '_blank');
+    };
+
     let debounce;
     nameInput.oninput = () => {
+        formulaCell.innerHTML = '';
         clearTimeout(debounce);
         debounce = setTimeout(triggerLookup, 500);
+    };
+
+    nameInput.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            triggerLookup();
+        }
     };
 
     // User specifically asked to trigger lookup when clicking/focusing the MW input

@@ -390,8 +390,10 @@ th {
 }
 
 td {
-    padding: 1rem 0;
+    padding: 0.75rem 0.25rem;
+    /* Reduced padding to save space */
     border-bottom: 1px solid var(--border);
+    vertical-align: middle;
 }
 
 /* View Switcher */
@@ -488,25 +490,100 @@ td {
 }
 
 .solute-row .mw-input {
-    width: 80px;
+    width: 65px;
     font-family: 'Roboto Mono', monospace;
     color: var(--primary);
 }
 
 .solute-row .conc-group {
     display: flex;
-    gap: 0.4rem;
+    gap: 0.25rem;
+    width: 140px;
 }
 
 .solute-row .conc-input {
-    width: 70px;
+    width: 50px;
+}
+
+.solute-row .conc-unit {
+    flex: 1;
+    padding: 0.4rem 0.2rem;
+    font-size: 0.8rem;
 }
 
 .solute-row .result-cell {
     font-weight: 600;
     color: var(--success);
     font-family: 'Roboto Mono', monospace;
+    width: 90px;
+    text-align: right;
+    padding-right: 0.5rem;
+}
+
+.chem-input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.chem-input-wrapper {
+    position: relative;
+    flex: 1;
+}
+
+.chem-name {
+    flex: 1;
     min-width: 100px;
+    max-width: 180px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.formula-cell {
+    width: auto;
+    text-align: left;
+    padding-left: 0.5rem;
+}
+
+.formula-badge {
+    background: #252839;
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: var(--primary);
+    font-family: 'Roboto Mono', monospace;
+    display: inline-block;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.formula-badge sub {
+    font-size: 0.65rem;
+    bottom: -0.1em;
+}
+
+.lookup-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 0.4rem;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.lookup-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--primary);
+    border-color: var(--primary);
 }
 
 .remove-btn {
