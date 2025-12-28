@@ -207,6 +207,10 @@
                                     <option value="L">L</option>
                                 </select>
                             </div>
+                            <button id="grabBufferVolBtn" class="text-btn small-text"
+                                style="margin-top:0.3rem; font-size: 0.85rem; text-decoration: underline; background: none; border: none; padding: 0; color: var(--primary); cursor: pointer;">
+                                📋 Grab from Buffer Calc
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -217,6 +221,11 @@
                 <div class="dilution-instruction">
                     Add <span id="v1Result" class="highlight-val">-</span> of Stock
                     <br>to <span id="solventResult" class="highlight-val">-</span> of Solvent
+                </div>
+                <div style="margin-top: 1.5rem; text-align: center;">
+                    <button id="addToRecipeBtn" class="secondary-btn" style="padding: 0.8rem 1.5rem;">
+                        ➕ Add to Buffer Recipe
+                    </button>
                 </div>
                 <div id="dilutionError" class="error-message hidden" style="margin-top:1rem"></div>
             </div>

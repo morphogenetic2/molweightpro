@@ -15,6 +15,7 @@ const PTABLE = {
 
 // DOM Elements - View Switching
 const showMwBtn = document.getElementById('showMwView');
+const mwView = document.getElementById('mwView');
 const bufferView = document.getElementById('bufferView');
 const dilutionView = document.getElementById('dilutionView');
 const showDilutionBtn = document.getElementById('showDilutionView');
@@ -57,6 +58,8 @@ const v1Result = document.getElementById('v1Result');
 const solventResult = document.getElementById('solventResult');
 const dilutionError = document.getElementById('dilutionError');
 const dilutionFormulaDisplay = document.getElementById('dilutionFormulaDisplay');
+const addToRecipeBtn = document.getElementById('addToRecipeBtn');
+const grabBufferVolBtn = document.getElementById('grabBufferVolBtn');
 
 let dilutionMw = 0;
 let dilutionCid = null;
@@ -651,12 +654,94 @@ dilutionChemInput.addEventListener('change', async () => {
     }
 });
 
+
 dilutionLookupBtn.onclick = () => {
     if (dilutionCid) {
         window.open(`https://pubchem.ncbi.nlm.nih.gov/compound/${dilutionCid}`, '_blank');
     } else if (dilutionChemInput.value) {
         window.open(`https://pubchem.ncbi.nlm.nih.gov/#query=${encodeURIComponent(dilutionChemInput.value)}`, '_blank');
     }
+};
+
+grabBufferVolBtn.onclick = () => {
+    const bufVol = parseFloat(solutionVolumeInput.value);
+    const bufUnit = volumeUnitSelect.value;
+
+    if (isNaN(bufVol) || bufVol <= 0) {
+        alert("Please set a valid volume in the Buffer Calculator first.");
+        return;
+    }
+
+    v2Input.value = bufVol;
+    v2Unit.value = bufUnit;
+
+    calculateDilution();
+    saveAppState();
+
+    // Visual feedback
+    const originalText = grabBufferVolBtn.textContent;
+    grabBufferVolBtn.textContent = "✅ Copied!";
+    setTimeout(() => { grabBufferVolBtn.textContent = originalText; }, 1500);
+};
+
+addToRecipeBtn.onclick = () => {
+    const c1 = parseFloat(c1Input.value);
+    const u1 = c1Unit.value;
+    const c2 = parseFloat(c2Input.value);
+    const u2 = c2Unit.value;
+
+    if (isNaN(c1) || isNaN(c2) || c1 <= 0 || c2 <= 0) {
+        alert("Please enter valid concentrations for both stock and target.");
+        return;
+    }
+
+    // Helper: isMolar checks if unit is M, mM, or μM
+    const isMolar = (u) => ['M', 'mM', 'μM'].includes(u);
+    // Helper: isMass checks if unit is μg/mL, mg/mL, mg/L, g/L, pct
+    const isMass = (u) => ['μg/mL', 'mg/mL', 'mg/L', 'g/L', 'pct'].includes(u);
+
+    // Cross-domain check
+    if ((isMolar(u1) && isMass(u2)) || (isMass(u1) && isMolar(u2))) {
+        if (!dilutionMw || dilutionMw <= 0) {
+            alert("Molecular Weight is required to transfer cross-unit dilutions.");
+            return;
+        }
+    }
+
+    // Normalizing to base units (M or g/L)
+    let c1Base = c1, c2Base = c2;
+    if (u1 === 'mM') c1Base /= 1000; else if (u1 === 'μM') c1Base /= 1e6;
+    else if (u1 === 'μg/mL' || u1 === 'mg/L') c1Base /= 1000; else if (u1 === 'pct') c1Base *= 10;
+
+    if (u2 === 'mM') c2Base /= 1000; else if (u2 === 'μM') c2Base /= 1e6;
+    else if (u2 === 'μg/mL' || u2 === 'mg/L') c2Base /= 1000; else if (u2 === 'pct') c2Base *= 10;
+
+    // Adjust c1Base to match c2Base dimension if they differ
+    if (isMolar(u2) && isMass(u1)) c1Base /= dilutionMw;
+    else if (isMass(u2) && isMolar(u1)) c1Base *= dilutionMw;
+
+    const xFactor = c1Base / c2Base;
+    if (xFactor < 1) {
+        alert("Stock concentration must be higher than target concentration.");
+        return;
+    }
+
+    // Transfer to Buffer Calculator
+    const chemName = dilutionChemInput.value.trim() || "Diluted Stock";
+    switchView('buffer');
+    const row = addSoluteRow();
+    row.querySelector('.chem-name').value = `Stock: ${chemName}`;
+    row.querySelector('.mw-input').value = dilutionMw > 0 ? dilutionMw.toFixed(2) : "";
+    row.querySelector('.conc-input').value = xFactor.toFixed(2);
+    row.querySelector('.conc-unit').value = 'dil';
+    row.dataset.cid = dilutionCid || "";
+
+    calculateRow(row);
+    saveAppState();
+
+    // Feedback
+    addToRecipeBtn.textContent = "✅ Added to Recipe!";
+    setTimeout(() => { addToRecipeBtn.textContent = "➕ Add to Buffer Recipe"; }, 2000);
 };
 
 /**
