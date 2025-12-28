@@ -151,7 +151,10 @@ function showError(msg) {
 }
 
 function formatFormula(formula) {
-    return formula.replace(/(\d+)/g, '<sub>$1</sub>');
+    // 1. Subscript indices
+    let formatted = formula.replace(/([A-Za-z)\]])(\d+)/g, '$1<sub>$2</sub>');
+    // 2. Standardize display of hydrate separators to middle dot
+    return formatted.replace(/[·*•]/g, '·');
 }
 
 function renderComposition(composition, totalMw) {
@@ -272,7 +275,7 @@ function addSoluteRow() {
         mwInput.placeholder = "...";
 
         // Try local parse
-        if (/^[A-Za-z0-9()\[\]·.]+$/.test(query) && /[A-Z]/.test(query)) {
+        if (/^[A-Za-z0-9()\[\]·*•.]+$/.test(query) && /[A-Z]/.test(query)) {
             try {
                 const composition = parseFormula(query);
                 mwInput.value = calculateMw(composition).toFixed(2);
@@ -622,7 +625,7 @@ dilutionChemInput.addEventListener('change', async () => {
     }
 
     // Try local parse
-    if (/^[A-Za-z0-9()\[\]·.]+$/.test(val) && /[A-Z]/.test(val)) {
+    if (/^[A-Za-z0-9()\[\]·*•.]+$/.test(val) && /[A-Z]/.test(val)) {
         try {
             const composition = parseFormula(val);
             const mw = calculateMw(composition);
@@ -748,7 +751,7 @@ addToRecipeBtn.onclick = () => {
  * SHARED UTILITIES
  */
 function parseFormula(formula) {
-    const parts = formula.replace(/·/g, '.').split('.');
+    const parts = formula.replace(/[·*•]/g, '.').split('.');
     let totalComp = {};
     parts.forEach(part => {
         let multiplier = 1;
@@ -838,7 +841,7 @@ async function handleCalculate() {
     calculateBtn.textContent = '...';
 
     try {
-        if (/^[A-Za-z0-9()\[\]·.]+$/.test(query) && /[A-Z]/.test(query)) {
+        if (/^[A-Za-z0-9()\[\]·*•.]+$/.test(query) && /[A-Z]/.test(query)) {
             try {
                 const composition = parseFormula(query);
                 const mw = calculateMw(composition);
