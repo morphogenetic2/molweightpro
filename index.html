@@ -30,6 +30,7 @@
         <nav class="view-switcher">
             <button id="showMwView" class="active">MW Calculator</button>
             <button id="showBufferView">Buffer Calculator</button>
+            <button id="showDilutionView">Dilution Calculator</button>
         </nav>
 
         <section id="mwView" class="view-container">
@@ -100,7 +101,7 @@
                     <div class="volume-input-group">
                         <input type="number" id="solutionVolume" value="100" min="0">
                         <select id="volumeUnit">
-                            <option value="uL">uL</option>
+                            <option value="μL">μL</option>
                             <option value="mL" selected>mL</option>
                             <option value="L">L</option>
                         </select>
@@ -130,6 +131,91 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </section>
+
+        <section id="dilutionView" class="view-container hidden">
+            <div class="result-card buffer-settings">
+                <h3>Calculations</h3> <!-- Header consistency -->
+                <div class="dilution-grid">
+                    <!-- Stock Solution -->
+                    <div class="dilution-group">
+                        <h4>Stock Solution (Start)</h4>
+                        <div class="input-row">
+                            <label>Chemical</label>
+                            <div class="chem-input-group">
+                                <button class="lookup-btn" id="dilutionLookupBtn" title="Open PubChem Entry">🔍</button>
+                                <input type="text" id="dilutionChemName" class="chem-name"
+                                    placeholder="Name (for MW lookup)">
+                            </div>
+                        </div>
+                        <div class="input-row result-value-sm" style="margin-top:0.5rem">
+                            <span id="dilutionFormulaDisplay" class="formula-badge"
+                                style="display:none;margin-right:0.5rem;"></span>
+                            <span id="dilutionMWDisplay" class="unit"
+                                style="font-size: 0.9rem; color: var(--text-dim);">MW: -</span>
+                        </div>
+
+                        <div class="input-row" style="margin-top:1rem">
+                            <label>Concentration</label>
+                            <div class="measure-input-group">
+                                <input type="number" id="c1Input" placeholder="C1">
+                                <select id="c1Unit">
+                                    <option value="M">M</option>
+                                    <option value="mM">mM</option>
+                                    <option value="μM">μM</option>
+                                    <option value="μg/mL">μg/mL</option>
+                                    <option value="mg/mL">mg/mL</option>
+                                    <option value="mg/L">mg/L</option>
+                                    <option value="g/L">g/L</option>
+                                    <option value="pct">%</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Target Solution -->
+                    <div class="dilution-group">
+                        <h4>Target Solution (End)</h4>
+                        <div class="input-row">
+                            <label>Desired Conc.</label>
+                            <div class="measure-input-group">
+                                <input type="number" id="c2Input" placeholder="C2">
+                                <select id="c2Unit">
+                                    <option value="M">M</option>
+                                    <option value="mM">mM</option>
+                                    <option value="μM">μM</option>
+                                    <option value="μg/mL">μg/mL</option>
+                                    <option value="mg/mL">mg/mL</option>
+                                    <option value="mg/L">mg/L</option>
+                                    <option value="g/L">g/L</option>
+                                    <option value="pct">%</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="input-row" style="margin-top:1rem">
+                            <label>Final Volume</label>
+                            <div class="measure-input-group">
+                                <input type="number" id="v2Input" placeholder="V2">
+                                <select id="v2Unit">
+                                    <option value="μL">μL</option>
+                                    <option value="mL" selected>mL</option>
+                                    <option value="L">L</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="result-card main-result" id="dilutionResultCard">
+                <div class="result-label">To prepare the solution</div>
+                <div class="dilution-instruction">
+                    Add <span id="v1Result" class="highlight-val">-</span> of Stock
+                    <br>to <span id="solventResult" class="highlight-val">-</span> of Solvent
+                </div>
+                <div id="dilutionError" class="error-message hidden" style="margin-top:1rem"></div>
             </div>
         </section>
     </main>

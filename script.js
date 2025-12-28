@@ -14,9 +14,10 @@ const PTABLE = {
 };
 
 // DOM Elements - View Switching
-const mwView = document.getElementById('mwView');
-const bufferView = document.getElementById('bufferView');
 const showMwBtn = document.getElementById('showMwView');
+const bufferView = document.getElementById('bufferView');
+const dilutionView = document.getElementById('dilutionView');
+const showDilutionBtn = document.getElementById('showDilutionView');
 const showBufferBtn = document.getElementById('showBufferView');
 
 // DOM Elements - MW Calc
@@ -41,6 +42,24 @@ const volumeUnitSelect = document.getElementById('volumeUnit');
 const soluteContainer = document.getElementById('soluteContainer');
 const addSoluteBtn = document.getElementById('addSoluteBtn');
 
+// DOM Elements - Dilution Calc
+const dilutionChemInput = document.getElementById('dilutionChemName');
+const dilutionLookupBtn = document.getElementById('dilutionLookupBtn');
+const dilutionMWDisplay = document.getElementById('dilutionMWDisplay');
+const c1Input = document.getElementById('c1Input');
+const c1Unit = document.getElementById('c1Unit');
+const c2Input = document.getElementById('c2Input');
+const c2Unit = document.getElementById('c2Unit');
+const v2Input = document.getElementById('v2Input');
+const v2Unit = document.getElementById('v2Unit');
+const v1Result = document.getElementById('v1Result');
+const solventResult = document.getElementById('solventResult');
+const dilutionError = document.getElementById('dilutionError');
+const dilutionFormulaDisplay = document.getElementById('dilutionFormulaDisplay');
+
+let dilutionMw = 0;
+let dilutionCid = null;
+
 let history = JSON.parse(localStorage.getItem('chemHistory') || '[]');
 
 /**
@@ -52,17 +71,28 @@ function switchView(view) {
         bufferView.classList.add('hidden');
         showMwBtn.classList.add('active');
         showBufferBtn.classList.remove('active');
-    } else {
+        showDilutionBtn.classList.remove('active');
+    } else if (view === 'buffer') {
         mwView.classList.add('hidden');
         bufferView.classList.remove('hidden');
+        dilutionView.classList.add('hidden');
         showMwBtn.classList.remove('active');
         showBufferBtn.classList.add('active');
+        showDilutionBtn.classList.remove('active');
         if (soluteContainer.children.length === 0) addSoluteRow();
+    } else if (view === 'dilution') {
+        mwView.classList.add('hidden');
+        bufferView.classList.add('hidden');
+        dilutionView.classList.remove('hidden');
+        showMwBtn.classList.remove('active');
+        showBufferBtn.classList.remove('active');
+        showDilutionBtn.classList.add('active');
     }
 }
 
 showMwBtn.addEventListener('click', () => switchView('mw'));
 showBufferBtn.addEventListener('click', () => switchView('buffer'));
+showDilutionBtn.addEventListener('click', () => switchView('dilution'));
 
 /**
  * MW CALCULATOR LOGIC
@@ -175,7 +205,7 @@ function renderHistory() {
     history.forEach(item => {
         const div = document.createElement('div');
         div.className = 'history-item';
-        div.textContent = item.key;
+        div.innerHTML = formatFormula(item.formula || item.key);
         div.onclick = () => {
             input.value = item.key;
             switchView('mw');
@@ -206,7 +236,11 @@ function addSoluteRow() {
                 <select class="conc-unit">
                     <option value="M">M</option>
                     <option value="mM">mM</option>
-                    <option value="uM">uM</option>
+                    <option value="μM">μM</option>
+                    <option value="μg/mL">μg/mL</option>
+                    <option value="mg/mL">mg/mL</option>
+                    <option value="mg/L">mg/L</option>
+                    <option value="g/L">g/L</option>
                     <option value="pct">% (w/v)</option>
                     <option value="dil">Dilution (X)</option>
                 </select>
@@ -243,7 +277,8 @@ function addSoluteRow() {
                 mwInput.value = calculateMw(composition).toFixed(2);
                 calculateRow(row);
                 mwInput.placeholder = "Mw";
-                formulaCell.innerHTML = '';
+                // Show formula badge for locally-parsed formulas
+                formulaCell.innerHTML = `<span class="formula-badge">${formatFormula(query)}</span>`;
                 return;
             } catch (e) { }
         }
@@ -315,7 +350,7 @@ function calculateRow(row) {
     const vol = parseFloat(solutionVolumeInput.value);
     const volUnit = volumeUnitSelect.value;
 
-    if (isNaN(mw) && unit !== 'pct' && unit !== 'dil') {
+    if (isNaN(mw) && unit !== 'pct' && unit !== 'dil' && unit !== 'μg/mL' && unit !== 'mg/mL' && unit !== 'mg/L' && unit !== 'g/L') {
         resultCell.textContent = '-';
         return;
     }
@@ -327,17 +362,17 @@ function calculateRow(row) {
     // Convert volume to Liters for calculation
     let volL = vol;
     if (volUnit === 'mL') volL = vol / 1000;
-    if (volUnit === 'uL') volL = vol / 1000000;
+    if (volUnit === 'μL') volL = vol / 1000000;
 
     let resultMsg = "";
 
-    if (unit === 'M' || unit === 'mM' || unit === 'uM') {
+    if (unit === 'M' || unit === 'mM' || unit === 'μM') {
         let molarity = conc;
         if (unit === 'mM') molarity = conc / 1000;
-        if (unit === 'uM') molarity = conc / 1000000;
+        if (unit === 'μM') molarity = conc / 1000000;
 
         const grams = molarity * volL * mw;
-        if (grams < 0.001) resultMsg = (grams * 1000000).toFixed(1) + " ug";
+        if (grams < 0.001) resultMsg = (grams * 1000000).toFixed(1) + " μg";
         else if (grams < 1) resultMsg = (grams * 1000).toFixed(1) + " mg";
         else resultMsg = grams.toFixed(3) + " g";
     }
@@ -355,13 +390,196 @@ function calculateRow(row) {
         if (stockVolML < 1) resultMsg = (stockVolML * 1000).toFixed(1) + " uL";
         else resultMsg = stockVolML.toFixed(2) + " mL";
     }
+    else if (unit === 'μg/mL' || unit === 'mg/mL' || unit === 'mg/L' || unit === 'g/L') {
+        // Mass concentration - calculate grams needed
+        const volML = volL * 1000;
+        let grams;
+        if (unit === 'μg/mL') grams = (conc / 1000) * volML / 1000; // μg/mL * mL = μg, /1000 -> mg, /1000 -> g
+        else if (unit === 'mg/mL') grams = conc * volML / 1000; // mg/mL * mL = mg, /1000 -> g
+        else if (unit === 'mg/L') grams = conc * volL / 1000; // mg/L * L = mg, /1000 -> g
+        else if (unit === 'g/L') grams = conc * volL; // g/L * L = g
+
+        if (grams < 0.001) resultMsg = (grams * 1000000).toFixed(1) + " μg";
+        else if (grams < 1) resultMsg = (grams * 1000).toFixed(1) + " mg";
+        else resultMsg = grams.toFixed(3) + " g";
+    }
 
     resultCell.textContent = resultMsg;
 }
 
 addSoluteBtn.onclick = addSoluteRow;
+addSoluteBtn.onclick = addSoluteRow;
 solutionVolumeInput.oninput = () => document.querySelectorAll('.solute-row').forEach(calculateRow);
 volumeUnitSelect.onchange = () => document.querySelectorAll('.solute-row').forEach(calculateRow);
+
+/**
+ * DILUTION CALCULATOR LOGIC
+ */
+function calculateDilution() {
+    const c1 = parseFloat(c1Input.value);
+    const u1 = c1Unit.value;
+    const c2 = parseFloat(c2Input.value);
+    const u2 = c2Unit.value;
+    const v2 = parseFloat(v2Input.value);
+    const uv2 = v2Unit.value;
+
+    if (isNaN(c1) || isNaN(c2) || isNaN(v2)) {
+        v1Result.textContent = '-';
+        solventResult.textContent = '-';
+        dilutionError.classList.add('hidden');
+        return;
+    }
+
+    // Helper: isMolar checks if unit is M, mM, or μM
+    const isMolar = (u) => ['M', 'mM', 'μM'].includes(u);
+    // Helper: isMass checks if unit is μg/mL, mg/mL, mg/L, g/L, pct
+    const isMass = (u) => ['μg/mL', 'mg/mL', 'mg/L', 'g/L', 'pct'].includes(u);
+
+    // If we are crossing domains (Mass <-> Molar), we NEED MW
+    if ((isMolar(u1) && isMass(u2)) || (isMass(u1) && isMolar(u2))) {
+        if (!dilutionMw || dilutionMw <= 0) {
+            dilutionError.textContent = "Molecular Weight required for Mass <-> Molar conversion. Please enter a valid chemical name.";
+            dilutionError.classList.remove('hidden');
+            v1Result.textContent = '-';
+            solventResult.textContent = '-';
+            return;
+        }
+    }
+    dilutionError.classList.add('hidden');
+
+    // 1. Convert C1 and C2 to a common base unit.
+    // Base for Molar = M
+    // Base for Mass = g/L (equivalent to mg/mL)
+
+    let c1Base = c1;
+    let c2Base = c2;
+
+    // Convert C1 to base (g/L or M)
+    if (u1 === 'mM') c1Base = c1 / 1000;
+    else if (u1 === 'μM') c1Base = c1 / 1e6;
+    else if (u1 === 'μg/mL') c1Base = c1 / 1000; // 1000 μg/mL = 1 mg/mL = 1 g/L
+    else if (u1 === 'mg/L') c1Base = c1 / 1000;
+    else if (u1 === 'pct') c1Base = c1 * 10; // 1% = 10g/L
+    // mg/mL and g/L are 1:1 in value for base units if we pick g/L
+
+    // Convert C2 to base logic (mirrored)
+    if (u2 === 'mM') c2Base = c2 / 1000;
+    else if (u2 === 'μM') c2Base = c2 / 1e6;
+    else if (u2 === 'μg/mL') c2Base = c2 / 1000;
+    else if (u2 === 'mg/L') c2Base = c2 / 1000;
+    else if (u2 === 'pct') c2Base = c2 * 10;
+
+    // At this point:
+    // Molar units are in M.
+    // Mass units are in g/L.
+
+    // If domains differ, convert C1 base to match C2 base's domain
+    // We will convert everything to match C2's domain so C1 matches C2.
+    // This allows us to use C1*V1 = C2*V2 => V1 = (C2*V2)/C1
+
+    if (isMolar(u2) && isMass(u1)) {
+        // C2 is M, C1 is g/L. Convert C1 to M.
+        // M = (g/L) / MW
+        c1Base = c1Base / dilutionMw;
+    } else if (isMass(u2) && isMolar(u1)) {
+        // C2 is g/L, C1 is M. Convert C1 to g/L.
+        // g/L = M * MW
+        c1Base = c1Base * dilutionMw;
+    }
+
+    // Now C1Base and C2Base are in the same dimension (either both M or both g/L).
+    // Convert V2 to Liters
+    let v2L = v2;
+    if (uv2 === 'mL') v2L = v2 / 1000;
+    if (uv2 === 'μL') v2L = v2 / 1e6;
+
+    // V1 = (C2 * V2) / C1
+    const v1L = (c2Base * v2L) / c1Base;
+
+    if (!isFinite(v1L) || v1L <= 0) {
+        // Could happen if C1 is 0
+        return;
+    }
+
+    if (v1L > v2L) {
+        dilutionError.textContent = "Impossible: Stock concentration is lower than target!";
+        dilutionError.classList.remove('hidden');
+        return;
+    }
+
+    // Format output
+    // Auto-select unit for V1
+    let v1Display, solvDisplay;
+    const solvL = v2L - v1L;
+
+    v1Display = formatVolume(v1L);
+    solvDisplay = formatVolume(solvL);
+
+    v1Result.textContent = v1Display;
+    solventResult.textContent = solvDisplay;
+}
+
+function formatVolume(volL) {
+    if (volL < 1e-6) return (volL * 1e9).toFixed(1) + " nL";
+    if (volL < 1e-3) return (volL * 1e6).toFixed(1) + " μL";
+    if (volL < 1) return (volL * 1e3).toFixed(1) + " mL";
+    return volL.toFixed(3) + " L";
+}
+
+// Dilution Event Listeners
+[c1Input, c2Input, v2Input].forEach(el => el.oninput = calculateDilution);
+[c1Unit, c2Unit, v2Unit].forEach(el => el.onchange = calculateDilution);
+
+dilutionChemInput.addEventListener('change', async () => {
+    const val = dilutionChemInput.value.trim();
+    if (!val) {
+        dilutionMw = 0;
+        dilutionMWDisplay.textContent = "MW: -";
+        dilutionFormulaDisplay.style.display = 'none';
+        dilutionCid = null;
+        return;
+    }
+
+    // Try local parse
+    if (/^[A-Za-z0-9()\[\]·.]+$/.test(val) && /[A-Z]/.test(val)) {
+        try {
+            const composition = parseFormula(val);
+            const mw = calculateMw(composition);
+            dilutionMw = mw;
+            dilutionMWDisplay.textContent = `MW: ${mw.toFixed(2)}`;
+            dilutionFormulaDisplay.innerHTML = formatFormula(val);
+            dilutionFormulaDisplay.style.display = 'inline-block';
+            dilutionCid = null;
+            calculateDilution();
+            return;
+        } catch (e) { }
+    }
+
+    // PubChem Lookup
+    dilutionMWDisplay.textContent = "MW: ...";
+    const res = await lookupPubChem(val);
+    if (res) {
+        dilutionMw = parseFloat(res.mw);
+        dilutionCid = res.cid;
+        dilutionMWDisplay.textContent = `MW: ${dilutionMw.toFixed(2)}`;
+        if (res.formula) {
+            dilutionFormulaDisplay.innerHTML = formatFormula(res.formula);
+            dilutionFormulaDisplay.style.display = 'inline-block';
+        }
+        calculateDilution();
+    } else {
+        dilutionMw = 0;
+        dilutionMWDisplay.textContent = "MW: Not Found";
+    }
+});
+
+dilutionLookupBtn.onclick = () => {
+    if (dilutionCid) {
+        window.open(`https://pubchem.ncbi.nlm.nih.gov/compound/${dilutionCid}`, '_blank');
+    } else if (dilutionChemInput.value) {
+        window.open(`https://pubchem.ncbi.nlm.nih.gov/#query=${encodeURIComponent(dilutionChemInput.value)}`, '_blank');
+    }
+};
 
 /**
  * SHARED UTILITIES

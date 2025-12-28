@@ -153,11 +153,6 @@ input[type=number] {
     -moz-appearance: textfield;
 }
 
-/* Optional: Show them on hover if desired, but usually 
-   consistent clean look is preferred. To match Chrome's 
-   hover behavior exactly is tricky in Firefox, so we 
-   usually hide them for a cleaner "Pro" look. */
-
 button {
     background: var(--primary);
     color: white;
@@ -391,7 +386,6 @@ th {
 
 td {
     padding: 0.75rem 0.25rem;
-    /* Reduced padding to save space */
     border-bottom: 1px solid var(--border);
     vertical-align: middle;
 }
@@ -626,4 +620,79 @@ td {
 .history-item:hover {
     background: rgba(255, 255, 255, 0.1);
     transform: translateY(-2px);
+}
+
+/* Dilution Calculator Styles */
+.dilution-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+.dilution-group h4 {
+    color: var(--primary);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+}
+
+.input-row {
+    margin-bottom: 1rem;
+}
+
+.input-row label {
+    display: block;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-bottom: 0.4rem;
+}
+
+.measure-input-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.measure-input-group input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0.6rem;
+    width: 100%;
+}
+
+.measure-input-group select {
+    background: var(--bg-dark);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    width: 90px;
+}
+
+.dilution-instruction {
+    font-size: 1.5rem;
+    line-height: 1.6;
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.highlight-val {
+    color: var(--primary);
+    font-family: 'Roboto Mono', monospace;
+    font-weight: 700;
+    font-size: 2.2rem;
+    padding: 0 0.5rem;
+    border-bottom: 3px solid rgba(99, 102, 241, 0.4);
+    text-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+}
+
+@media (max-width: 650px) {
+    .dilution-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
 }
