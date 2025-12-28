@@ -206,7 +206,7 @@ function renderHistory() {
     history.forEach(item => {
         const div = document.createElement('div');
         div.className = 'history-item';
-        div.innerHTML = formatFormula(item.formula || item.key);
+        div.textContent = item.key;
         div.onclick = () => {
             input.value = item.key;
             switchView('mw');
