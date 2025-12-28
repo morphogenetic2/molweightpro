@@ -41,6 +41,7 @@ const solutionVolumeInput = document.getElementById('solutionVolume');
 const volumeUnitSelect = document.getElementById('volumeUnit');
 const soluteContainer = document.getElementById('soluteContainer');
 const addSoluteBtn = document.getElementById('addSoluteBtn');
+const clearRecipeBtn = document.getElementById('clearRecipeBtn');
 
 // DOM Elements - Dilution Calc
 const dilutionChemInput = document.getElementById('dilutionChemName');
@@ -66,28 +67,25 @@ let history = JSON.parse(localStorage.getItem('chemHistory') || '[]');
  * VIEW SWITCHING
  */
 function switchView(view) {
+    mwView.classList.add('hidden');
+    bufferView.classList.add('hidden');
+    dilutionView.classList.add('hidden');
+    showMwBtn.classList.remove('active');
+    showBufferBtn.classList.remove('active');
+    showDilutionBtn.classList.remove('active');
+
     if (view === 'mw') {
         mwView.classList.remove('hidden');
-        bufferView.classList.add('hidden');
         showMwBtn.classList.add('active');
-        showBufferBtn.classList.remove('active');
-        showDilutionBtn.classList.remove('active');
     } else if (view === 'buffer') {
-        mwView.classList.add('hidden');
         bufferView.classList.remove('hidden');
-        dilutionView.classList.add('hidden');
-        showMwBtn.classList.remove('active');
         showBufferBtn.classList.add('active');
-        showDilutionBtn.classList.remove('active');
         if (soluteContainer.children.length === 0) addSoluteRow();
     } else if (view === 'dilution') {
-        mwView.classList.add('hidden');
-        bufferView.classList.add('hidden');
         dilutionView.classList.remove('hidden');
-        showMwBtn.classList.remove('active');
-        showBufferBtn.classList.remove('active');
         showDilutionBtn.classList.add('active');
     }
+    saveAppState();
 }
 
 showMwBtn.addEventListener('click', () => switchView('mw'));
@@ -331,14 +329,17 @@ function addSoluteRow() {
     mwInput.onfocus = triggerLookup;
 
     [mwInput, concInput, unitSelect].forEach(el => {
-        el.oninput = () => calculateRow(row);
+        el.oninput = () => { calculateRow(row); saveAppState(); };
     });
 
     removeBtn.onclick = () => {
         row.remove();
+        saveAppState();
     };
 
     soluteContainer.appendChild(row);
+    saveAppState();
+    return row;
 }
 
 function calculateRow(row) {
@@ -372,22 +373,18 @@ function calculateRow(row) {
         if (unit === 'μM') molarity = conc / 1000000;
 
         const grams = molarity * volL * mw;
-        if (grams < 0.001) resultMsg = (grams * 1000000).toFixed(1) + " μg";
-        else if (grams < 1) resultMsg = (grams * 1000).toFixed(1) + " mg";
-        else resultMsg = grams.toFixed(3) + " g";
+        resultMsg = formatMass(grams);
     }
     else if (unit === 'pct') {
-        // % w/v is grams per 100mL
         const volML = volL * 1000;
         const grams = (conc / 100) * volML;
-        if (grams < 1) resultMsg = (grams * 1000).toFixed(1) + " mg";
-        else resultMsg = grams.toFixed(2) + " g";
+        resultMsg = formatMass(grams);
     }
     else if (unit === 'dil') {
         // Dilution X (making it 1X). Vol = FinalVol / StockConc
         const stockVolL = volL / conc;
         const stockVolML = stockVolL * 1000;
-        if (stockVolML < 1) resultMsg = (stockVolML * 1000).toFixed(1) + " uL";
+        if (stockVolML < 1) resultMsg = (stockVolML * 1000).toFixed(1) + " μL";
         else resultMsg = stockVolML.toFixed(2) + " mL";
     }
     else if (unit === 'μg/mL' || unit === 'mg/mL' || unit === 'mg/L' || unit === 'g/L') {
@@ -396,21 +393,32 @@ function calculateRow(row) {
         let grams;
         if (unit === 'μg/mL') grams = (conc / 1000) * volML / 1000; // μg/mL * mL = μg, /1000 -> mg, /1000 -> g
         else if (unit === 'mg/mL') grams = conc * volML / 1000; // mg/mL * mL = mg, /1000 -> g
-        else if (unit === 'mg/L') grams = conc * volL / 1000; // mg/L * L = mg, /1000 -> g
-        else if (unit === 'g/L') grams = conc * volL; // g/L * L = g
+        else if (unit === 'mg/L') grams = conc * volL / 1000;
+        else if (unit === 'g/L') grams = conc * volL;
 
-        if (grams < 0.001) resultMsg = (grams * 1000000).toFixed(1) + " μg";
-        else if (grams < 1) resultMsg = (grams * 1000).toFixed(1) + " mg";
-        else resultMsg = grams.toFixed(3) + " g";
+        resultMsg = formatMass(grams);
     }
 
     resultCell.textContent = resultMsg;
 }
 
-addSoluteBtn.onclick = addSoluteRow;
-addSoluteBtn.onclick = addSoluteRow;
-solutionVolumeInput.oninput = () => document.querySelectorAll('.solute-row').forEach(calculateRow);
-volumeUnitSelect.onchange = () => document.querySelectorAll('.solute-row').forEach(calculateRow);
+addSoluteBtn.onclick = () => addSoluteRow();
+solutionVolumeInput.oninput = () => {
+    document.querySelectorAll('.solute-row').forEach(calculateRow);
+    saveAppState();
+};
+volumeUnitSelect.onchange = () => {
+    document.querySelectorAll('.solute-row').forEach(calculateRow);
+    saveAppState();
+};
+
+clearRecipeBtn.onclick = () => {
+    if (confirm("Are you sure you want to clear the entire recipe?")) {
+        soluteContainer.innerHTML = '';
+        addSoluteRow(); // Add one clean row back
+        saveAppState();
+    }
+};
 
 /**
  * DILUTION CALCULATOR LOGIC
@@ -512,11 +520,9 @@ function calculateDilution() {
     let v1Display, solvDisplay;
     const solvL = v2L - v1L;
 
-    v1Display = formatVolume(v1L);
-    solvDisplay = formatVolume(solvL);
-
-    v1Result.textContent = v1Display;
-    solventResult.textContent = solvDisplay;
+    v1Result.textContent = formatVolume(v1L);
+    solventResult.textContent = formatVolume(solvL);
+    saveAppState();
 }
 
 function formatVolume(volL) {
@@ -524,6 +530,78 @@ function formatVolume(volL) {
     if (volL < 1e-3) return (volL * 1e6).toFixed(1) + " μL";
     if (volL < 1) return (volL * 1e3).toFixed(1) + " mL";
     return volL.toFixed(3) + " L";
+}
+
+function formatMass(grams) {
+    if (grams < 1e-6) return (grams * 1e9).toFixed(1) + " ng";
+    if (grams < 1e-3) return (grams * 1e6).toFixed(1) + " μg";
+    if (grams < 1) return (grams * 1000).toFixed(1) + " mg";
+    return grams.toFixed(3) + " g";
+}
+
+function saveAppState() {
+    const state = {
+        activeView: showMwBtn.classList.contains('active') ? 'mw' : (showBufferBtn.classList.contains('active') ? 'buffer' : 'dilution'),
+        mwInput: input.value,
+        buffer: {
+            volume: solutionVolumeInput.value,
+            unit: volumeUnitSelect.value,
+            solutes: Array.from(document.querySelectorAll('.solute-row')).map(row => ({
+                name: row.querySelector('.chem-name').value,
+                mw: row.querySelector('.mw-input').value,
+                conc: row.querySelector('.conc-input').value,
+                unit: row.querySelector('.conc-unit').value,
+                cid: row.dataset.cid
+            }))
+        },
+        dilution: {
+            name: dilutionChemInput.value,
+            mw: dilutionMw,
+            cid: dilutionCid,
+            c1: c1Input.value,
+            u1: c1Unit.value,
+            c2: c2Input.value,
+            u2: c2Unit.value,
+            v2: v2Input.value,
+            vu2: v2Unit.value
+        }
+    };
+    localStorage.setItem('molWeightProState', JSON.stringify(state));
+}
+
+async function loadAppState() {
+    const raw = localStorage.getItem('molWeightProState');
+    if (!raw) return;
+    try {
+        const state = JSON.parse(raw);
+        input.value = state.mwInput || "";
+        solutionVolumeInput.value = state.buffer.volume || 100;
+        volumeUnitSelect.value = state.buffer.unit || "mL";
+        soluteContainer.innerHTML = "";
+        if (state.buffer.solutes && state.buffer.solutes.length > 0) {
+            state.buffer.solutes.forEach(s => {
+                const row = addSoluteRow();
+                row.querySelector('.chem-name').value = s.name;
+                row.querySelector('.mw-input').value = s.mw;
+                row.querySelector('.conc-input').value = s.conc;
+                row.querySelector('.conc-unit').value = s.unit;
+                row.dataset.cid = s.cid;
+                if (s.mw) calculateRow(row);
+            });
+        }
+        dilutionChemInput.value = state.dilution.name || "";
+        dilutionMw = state.dilution.mw || 0;
+        dilutionCid = state.dilution.cid || null;
+        if (dilutionMw) dilutionMWDisplay.textContent = `MW: ${dilutionMw.toFixed(2)}`;
+        c1Input.value = state.dilution.c1 || "";
+        c1Unit.value = state.dilution.u1 || "M";
+        c2Input.value = state.dilution.c2 || "";
+        c2Unit.value = state.dilution.u2 || "M";
+        v2Input.value = state.dilution.v2 || "";
+        v2Unit.value = state.dilution.vu2 || "mL";
+        calculateDilution();
+        switchView(state.activeView);
+    } catch (e) { console.error("Load state error", e); }
 }
 
 // Dilution Event Listeners
@@ -699,6 +777,8 @@ async function handleCalculate() {
     }
 }
 
-calculateBtn.addEventListener('click', handleCalculate);
-input.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleCalculate(); });
+calculateBtn.addEventListener('click', () => { handleCalculate(); saveAppState(); });
+input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { handleCalculate(); saveAppState(); } });
+input.addEventListener('input', saveAppState);
 renderHistory();
+loadAppState();

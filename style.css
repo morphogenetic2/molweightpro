@@ -425,6 +425,22 @@ td {
     background: rgba(255, 255, 255, 1);
 }
 
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.danger-btn {
+    color: var(--error) !important;
+    background: rgba(239, 68, 68, 0.1) !important;
+    border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+.danger-btn:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    color: #ff5f5f !important;
+}
+
 /* Buffer View Styles */
 .buffer-settings .buffer-header {
     display: flex;

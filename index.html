@@ -37,7 +37,7 @@
             <section class="search-section">
                 <div class="search-bar">
                     <input type="text" id="chemicalInput"
-                        placeholder="Enter formula (e.g., H2O) or name (e.g., Aspirin)" autocomplete="off">
+                        placeholder="Enter formula (e.g., H2O) or name (e.g., ethyl acetate)" autocomplete="off">
                     <button id="calculateBtn">Calculate</button>
                 </div>
                 <div id="errorMessage" class="error-message hidden"></div>
@@ -112,7 +112,10 @@
             <div class="result-card solute-card">
                 <div class="solutes-header">
                     <h3>Solutes</h3>
-                    <button id="addSoluteBtn" class="secondary-btn">+ Add Solute</button>
+                    <div class="header-actions">
+                        <button id="clearRecipeBtn" class="secondary-btn danger-btn">⚠️ Clear Recipe</button>
+                        <button id="addSoluteBtn" class="secondary-btn">+ Add Solute</button>
+                    </div>
                 </div>
                 <div class="table-wrapper">
                     <table class="solute-table">
